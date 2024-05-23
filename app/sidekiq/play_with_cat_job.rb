@@ -1,6 +1,5 @@
-# frozen_string_literal: true
-
 require 'faker'
+require 'unicode/display_width'
 
 class PlayWithCatJob
   include Sidekiq::Job
@@ -9,7 +8,7 @@ class PlayWithCatJob
 
   def perform(cat_id)
     unless cat_id.is_a?(Integer)
-      raise ArgumentError, message: 'Cat ID must be integer value'
+      raise ArgumentError, 'Cat ID must be integer value'
     end
 
     @cat = find_cat_by_id(cat_id)
@@ -31,6 +30,22 @@ class PlayWithCatJob
   end
 
   def play_with_cat
-    puts "Meow! #{@cat.name.titlecase} is having fun!"
+    msg = "Meow! #{@cat.name.titlecase} is having fun!"
+    width = Unicode::DisplayWidth.of(msg)
+
+    if width.odd?
+      msg.insert(-2, ' ')
+      width += 1
+    end
+
+    puts <<~TEXT
+
+#{'🐱' * ((width / 2) + 3)}
+🐱 #{' ' * width} 🐱
+🐱 #{msg} 🐱
+🐱 #{' ' * width} 🐱
+#{'🐱' * ((width / 2) + 3)}
+
+    TEXT
   end
 end
