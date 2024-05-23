@@ -3,6 +3,20 @@ require 'unicode/display_width'
 
 class PlayWithCatJob
   include Sidekiq::Job
+  sidekiq_options retry: 1
+
+  sidekiq_retry_in do |count, exception, _jobhash|
+    case exception
+    when ArgumentError
+      :discard
+    else
+      count + 2
+    end
+  end
+
+  sidekiq_retries_exhausted do |job, exception|
+    Rails.logger.warn "Failed #{job['class']} with #{job['args']}: #{exception}"
+  end
 
   class ArgumentError < StandardError; end
 
@@ -19,6 +33,7 @@ class PlayWithCatJob
 
   def find_cat_by_id(id)
     Cat.find_or_create_by(id: id) do |cat|
+      cat.id = nil
       cat.name = generate_name
       cat.age = rand(1..20)
       cat.save!
